@@ -17,6 +17,25 @@ from tkinter import *
 class Page_Presentation : 
     
 class Page_Jeu : 
+# root = tk.Tk()
+# root.title("Jeu du casse-briques")
+# root.configure(bg="bisque")
+
+# # Canvas unique
+# canvas = tk.Canvas(root, width=800, height=400, bg="white")
+# canvas.pack(pady=10)
+
+# # Instanciation de la plateforme
+# paddle = MouvementPlateforme(canvas)
+
+# begin_button = tk.Button(root, text="Begin", command=paddle.plateforme)
+# begin_button.pack(side=tk.LEFT, padx=5, pady=5)
+
+# quit_button = tk.Button(root, text="Quit", command=root.destroy)
+# quit_button.pack(side=tk.LEFT, padx=5, pady=5)
+
+# root.mainloop()
+
     
     
 class Creation_Brique :
@@ -47,7 +66,31 @@ class Mouvement_Balle :
     # mouvement physique dans l'espace 
     # rebond de la balle sur la brique , prendre True 
    
-class Mouvement_plateforme :  
+
+class MouvementPlateforme:
+    def __init__(self, canvas: tk.Canvas):
+        self.canvas = canvas
+        self.vx = 0          # vitesse horizontale
+        self.speed = 10      # pixels par tick
+        
+    def plateforme(self):
+        self.plat = self.canvas.create_rectangle(
+            240, 372, 360, 388, fill="#333"
+            )
+        return self.plat
+
+    def _left(self):  self.vx = -self.speed
+    def _right(self, _): self.vx =  self.speed
+    def _stop(self, _):  self.vx = 0
+
+    def _tick(self):
+        if self.vx != 0:
+            x1, y1, x2, y2 = self.canvas.coords(self.plat)
+            W = int(self.canvas.cget("width"))
+
+
+            self.canvas.move(self.plat, dx, 0)  # seulement sur l’axe X
+
 class Deplacement_Clavier_plateforme : 
     
 class vie :
