@@ -6,6 +6,8 @@ quand : 09/10/2025
 
 quoi : programmation du jeu casse brique sur TKinter
 
+a faire : Rayan doit faire la page vie et destruction brique
+          Yassine doit finir score avec destruction brique, faire page de jeu et de presentation 
 """
 
 from tkinter import * 
