@@ -15,8 +15,23 @@ from tkinter import *
 
         
 
+class Score:
+    def __init__(self, root):
+        # Utilisation de Frame/Label tels qu'ils étaient dans ton fichier
+        self.frame = Frame(root)
+        self.label_score = Label(self.frame, text="Score : 0")
+        self.label_vies = Label(self.frame, text="Vies : 3")
+        self.label_vies.pack(side=LEFT, padx=10)
+        self.label_score.pack(side=RIGHT, padx=10)
+        
+    def pack(self):
+        self.frame.pack()
 
-class Page_Presentation : 
+    def modifier(self, score=None, vies=None):
+        if score is not None:
+            self.label_score.config(text=f"Score : {score}")
+        if vies is not None:
+            self.label_vies.config(text=f"Vies : {vies}")
     
 class Page_Jeu : 
 # root = tk.Tk()
