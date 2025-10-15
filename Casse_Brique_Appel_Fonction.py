@@ -10,8 +10,10 @@ a faire : Rayan doit faire la page vie et destruction brique
           Yassine doit finir score avec destruction brique, faire page de jeu et de presentation 
 """
 
-from tkinter import * 
-
+import tkinter as tk
+import math
+import random
+from tkinter import Canvas, Frame, Label, LEFT, RIGHT
 
         
 
@@ -42,8 +44,9 @@ class Page_Jeu :
     
 class Creation_Brique :
 
-    def __init__(self, canvas: tk.Canvas):
-        self.canvas = canvas
+    def __init__(self, canvas: Canvas):
+        self.canvas = canvas   
+        self.bricks = [] 
 
     def Brique(self):
         # crée une brique et retourne son id
@@ -54,39 +57,74 @@ class Creation_Brique :
         w    = 60     # largeur d'une brique
         h    = 20     # hauteur d'une brique
         gap  = 5    # espace entre deux briques
+        color = "blue"  # couleur unique pour toutes les briques
         
 
         for j in range(5):  # 5 lignes
-            y1 = y0 + j * 25
             for i in range(n):  # n colonnes
                 x1 = x0 + i * (w + gap)
+                y1 = y0 + j * (h + gap)
                 x2 = x1 + w
                 y2 = y1 + h
-                canvas.create_rectangle(x1, y1, x2, y2, fill="blue", outline="")
+                brick_id = self.canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline="")
+                self.bricks.append({
+                    "id": brick_id,
+                    "x1": x1,
+                    "y1": y1,
+                    "x2": x2,
+                    "y2": y2})
+def brick_hit_at(self, x, y):
+        """Supprime une brique si le point (x, y) entre en collision avec elle."""
+        for brick in list(self.bricks):  # itérer sur une copie car on peut supprimer
+            if brick["x1"] <= x <= brick["x2"] and brick["y1"] <= y <= brick["y2"]:
+                self.canvas.delete(brick["id"])
+                self.bricks.remove(brick)
+                return True
+        return False
     
-class rebond_cadre : 
-    # faire rebondir la balle sur le cadre du jeu     
-    
-class Destruction_Brique :   
-    # supprimer la brique
-    # Supperimer brique = True
     
     
-    
-class Score : 
-    def __init__(self , brique):
-        self.__brique = brique
-        self.__point = []
-    def compte_point(self):
-        if brique ==     :
+class Score:
+    def __init__(self, root):
+        # Utilisation de Frame/Label tels qu'ils étaient dans ton fichier
+        self.frame = Frame(root)
+        self.label_score = Label(self.frame, text="Score : 0")
+        self.label_vies = Label(self.frame, text="Vies : 3")
+        self.label_vies.pack(side=LEFT, padx=10)
+        self.label_score.pack(side=RIGHT, padx=10)
+        
+    def pack(self):
+        self.frame.pack()
+
+    def modifier(self, score=None, vies=None):
+        if score is not None:
+            self.label_score.config(text=f"Score : {score}")
+        if vies is not None:
+            self.label_vies.config(text=f"Vies : {vies}")
             
             
     
-class Creation_Balle : 
-class Mouvement_Balle :
-    # mouvement physique dans l'espace 
-    # rebond de la balle sur la brique , prendre True 
-   
+class Creation_Balle:
+    def __init__(self, canvas, x, y, rayon=8, vitesse=6):
+        self.canvas = canvas
+        self.x = x
+        self.y = y
+        self.rayon = rayon
+        self.vitesse = vitesse
+
+        # direction initiale vers le haut (valeur vy négative)
+        angle = random.uniform(-math.pi/4, math.pi/4)
+        self.vx = vitesse * math.sin(angle)
+        self.vy = -abs(vitesse * math.cos(angle))
+
+        # Dessiner la balle
+        self.id = canvas.create_oval(x-rayon, y-rayon, x+rayon, y+rayon, fill="red")
+
+    def move(self):
+        self.x += self.vx
+        self.y += self.vy
+        self.canvas.coords(self.id, self.x-self.rayon, self.y-self.rayon, self.x+self.rayon, self.y+self.rayon)
+
 
 class MouvementPlateforme:
     def __init__(self, canvas: tk.Canvas):
@@ -121,6 +159,7 @@ class Deplacement_Clavier_plateforme :
         #  Surcharger la vitesse si on continue a appuyer
         if speed is not None:
             self.mp.speed = speed
+            
 
         # Largeur du canvas pour le clipping aux bords
         self.W = int(self.mp.canvas.cget("width"))
@@ -156,12 +195,6 @@ class Deplacement_Clavier_plateforme :
 
         self.mp.canvas.after(self.period_ms, self._tick)
 
-class vie :
-    # compter le nb de vie 
-    # reinitialiser le jeu ( remtettre la page _Jeu)
-    
-class Fin_Jeu : 
-    
     
 
 
@@ -169,7 +202,12 @@ class Fin_Jeu :
 
 
 
+def on_begin():
 
+
+
+
+def game_loop():
 
 
 
