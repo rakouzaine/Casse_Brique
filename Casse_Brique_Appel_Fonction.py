@@ -201,7 +201,7 @@ class Deplacement_Clavier_plateforme :
     
 
 
-
+ 
 def on_begin():
 
 
