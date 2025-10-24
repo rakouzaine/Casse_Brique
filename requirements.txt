@@ -1,0 +1,28 @@
+# Librairies génériques
+numpy 
+scipy
+opencv-python
+notebook
+jupyter
+pandas			# required package for plotly
+Pillow
+dash-bootstrap-components
+dash
+msicpe          # inhouse CPE package 
+ipykernel
+
+## Interactions STM32
+adafruit-ampy
+
+## Librairies affichage
+matplotlib
+plotly
+
+## Audio 
+sounddevice
+pyaudio
+
+# TSI
+pyopengl
+pyrr
+glfw
