@@ -1,0 +1,28 @@
+class CreationBalle:
+    def __init__(self, canvas, x, y, rayon=8, vitesse=5):
+        self.canvas = canvas
+        self.x = x
+        self.y = y
+        self.rayon = rayon
+        self.vitesse = vitesse
+
+        # direction initiale vers le haut (valeur vy négative)
+        angle = random.uniform(-math.pi/4, math.pi/4)
+        self.vx = vitesse * math.sin(angle)
+        self.vy = -abs(vitesse * math.cos(angle))
+
+        # Dessine la balle
+        self.id = canvas.create_oval(x-rayon, y-rayon, x+rayon, y+rayon, fill="red")
+
+    def move(self):
+        self.x += self.vx
+        self.y += self.vy
+        self.canvas.coords(self.id, self.x-self.rayon, self.y-self.rayon, self.x+self.rayon, self.y+self.rayon)
+
+    def reset_above(self, x, y):
+        """Replace la balle au-dessus de la plateforme et lui redonne une impulsion vers le haut."""
+        self.x, self.y = x, y
+        self.vx = random.choice([-4, 4])
+        self.vy = -4
+        self.canvas.coords(self.id, self.x - self.rayon, self.y - self.rayon,
+                                 self.x + self.rayon, self.y + self.rayon)
