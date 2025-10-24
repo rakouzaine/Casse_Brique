@@ -1,0 +1,397 @@
+
+""" 
+qui : Rayan Souni , Yassine ZAIR
+quand : 09 / 10 / 2025 
+quoi : Jeu du casse-briques sur PYTHON via TKinter
+"""
+
+import tkinter as tk
+import math,os
+import random
+from tkinter import Canvas, Frame, Label, LEFT, RIGHT,messagebox
+from PIL import Image, ImageTk
+
+
+# -------------------------- CLASSES -------------------------------------
+
+class CreationBrique:
+    def __init__(self, canvas: Canvas):
+        """Initialise le gestionnaire de briques."""
+        self.canvas = canvas
+        self.bricks = []  # Liste qui stocke les briques (id + coordonnées)
+
+    def create_brique(self):
+        """Crée et affiche les briques sur le canvas."""
+        n = 10       # nombre de briques par ligne
+        lignes = 5     # nombre de lignes
+        x0 = 40      # x de départ
+        y0 = 50      # y de départ
+        w = 60       # largeur d'une brique
+        h = 20       # hauteur d'une brique
+        gap = 5      # espace entre deux briques
+
+       
+
+        for j in range(lignes):
+            for i in range(n):
+
+                color = "#{:06x}".format(random.randint(0, 0xFFFFFF)) # couleur unique pour toutes les briques
+
+                x1 = x0 + i * (w + gap)
+                y1 = y0 + j * (h + gap)
+                x2 = x1 + w
+                y2 = y1 + h
+
+                brick_id = self.canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline="")
+                self.bricks.append({
+                    "id": brick_id,
+                    "x1": x1,
+                    "y1": y1,
+                    "x2": x2,
+                    "y2": y2
+                })
+
+    def destruction_briques(self, x, y):
+        """Supprime une brique si le point (x, y) entre en collision avec elle."""
+        for brique in list(self.bricks):  # itérer sur une copie car on peut supprimer
+            if brique["x1"] <= x <= brique["x2"] and brique["y1"] <= y <= brique["y2"]: # x , y sont les coordonnées de la balle
+                self.canvas.delete(brique["id"])
+                self.bricks.remove(brique)
+                return True # si true alors la balle change de direction apres destruction des briques
+        return False 
+
+
+
+class Score:
+    FICHIER_SCORE = "meilleur_score.txt"  # fichier pour stocker le meilleur score
+
+    def __init__(self, root):
+        self.frame = Frame(root)
+
+        # Labels pour les vies et le score actuel
+        self.label_vies = Label(self.frame, text="Vies : 3")
+        self.label_vies.pack(side=LEFT, padx=10)
+
+        self.label_score = Label(self.frame, text="Score : 0")
+        self.label_score.pack(side=RIGHT, padx=10)
+
+        # Charger le meilleur score depuis le fichier
+        self.meilleur_score = 0
+
+        if os.path.exists(self.FICHIER_SCORE):
+            with open(self.FICHIER_SCORE, "r") as f:
+                contenu = f.read()
+                self.meilleur_score = int(contenu) 
+        else:
+            self.meilleur_score = 0
+
+        # Label pour le meilleur score
+        self.label_meilleur = Label(self.frame, text=f"Meilleur score : {self.meilleur_score}")
+        self.label_meilleur.pack(side=RIGHT, padx=10)
+
+    def pack(self):
+        self.frame.pack()
+
+    def modifier(self, score=None, vies=None):
+        if score is not None:
+            self.label_score.config(text=f"Score : {score}")
+            # mettre à jour le meilleur score si nécessaire
+            if score > self.meilleur_score:
+                self.meilleur_score = score
+                self.label_meilleur.config(text=f"Meilleur score : {self.meilleur_score}")
+                # sauvegarder le meilleur score dans le fichier
+                with open(self.FICHIER_SCORE, "w") as f:
+                    f.write(str(self.meilleur_score))
+        if vies is not None:
+            self.label_vies.config(text=f"Vies : {vies}")
+            
+class CreationBalle:
+    def __init__(self, canvas, x, y, rayon=8, vitesse=6):
+        self.canvas = canvas
+        self.x = x
+        self.y = y
+        self.rayon = rayon
+        self.vitesse = vitesse
+
+        # direction initiale vers le haut (valeur vy négative)
+        angle = random.uniform(-math.pi/4, math.pi/4)
+        self.vx = vitesse * math.sin(angle)
+        self.vy = -abs(vitesse * math.cos(angle))
+
+        # Dessiner la balle
+        self.id = canvas.create_oval(x-rayon, y-rayon, x+rayon, y+rayon, fill="red")
+
+    def move(self):
+        self.x += self.vx
+        self.y += self.vy
+        self.canvas.coords(self.id, self.x-self.rayon, self.y-self.rayon, self.x+self.rayon, self.y+self.rayon)
+
+
+class MouvementPlateforme:
+    def __init__(self, canvas: tk.Canvas):
+        self.canvas = canvas
+        self.vx = 0          # vitesse horizontale
+        self.speed = 10      # pixels par tick
+        
+    def plateforme(self):
+        self.plat = self.canvas.create_rectangle(240, 372, 360, 388, fill="white")
+        return self.plat
+
+    # méthodes non utilisées directement pour les bindings (contrôle via Deplacement_Clavier_plateforme)
+    def _left(self):
+        self.vx = -self.speed
+
+    def _right(self):
+        self.vx = self.speed
+
+    def _stop(self):
+        self.vx = 0
+
+
+class DeplacementClavierplateforme:
+    def __init__(self, root: tk.Tk, mp: MouvementPlateforme, fps: int = 60):
+        self.root = root
+        self.mp = mp
+        self.W = int(self.mp.canvas.cget("width"))
+
+        # Bind clavier (flèches)
+        root.bind("<Left>",  self._left)
+        root.bind("<Right>", self._right)
+        root.bind("<KeyRelease-Left>",  self._stop)
+        root.bind("<KeyRelease-Right>", self._stop)
+
+        # Boucle d'update
+        self.period_ms = max(1, int(1000 / fps))
+        self._tick()
+
+    def _left(self, _evt):
+        self.mp.vx = -self.mp.speed
+
+    def _right(self, _evt):
+        self.mp.vx = self.mp.speed
+
+    def _stop(self, _evt):
+        self.mp.vx = 0
+
+    def _tick(self):
+        # Si on a une vitesse horizontale, on essaie de bouger
+        if self.mp.vx != 0:
+            x1, y1, x2, y2 = self.mp.canvas.coords(self.mp.plat)
+            dx = self.mp.vx
+
+            # arrêt aux bords
+            if x1 + dx < 0:
+                dx = -x1
+            elif x2 + dx > self.W:
+                dx = self.W - x2
+
+            if dx != 0:
+                self.mp.canvas.move(self.mp.plat, dx, 0)  # déplacement uniquement sur X
+
+        self.mp.canvas.after(self.period_ms, self._tick)
+
+
+# ------------------------- PROGRAMME PRINCIPAL ---------------------------
+
+class JeuCasseBrique:
+    def __init__(self):
+      
+        self.root = tk.Tk()
+        self.root.title("Jeu du casse-briques")
+        self.root.configure(bg="bisque")
+
+        self.canvas_width = 720
+        self.canvas_height = 400
+
+        self.canvas = tk.Canvas(self.root, width=self.canvas_width, height=self.canvas_height, bg="black")
+        self.canvas.pack(fill="both", expand=True ,pady=20)
+
+        # Afficher l'image de démarrage
+        print(os.path.join(os.path.dirname(__file__),"Gemini_Generated_Image_5pg9uc5pg9uc5pg9.png")) # chemin de l'image 
+
+        pil_image = Image.open(r"C:\Users\33783\Downloads\Gemini_Generated_Image_5pg9uc5pg9uc5pg9.png")
+        pil_image = pil_image.resize((self.canvas_width, self.canvas_height))
+        self.image_bg_orig = pil_image  # garder l'originale pour redimensionner
+        self.image_bg = ImageTk.PhotoImage(self.image_bg_orig)
+        self.bg_id = self.canvas.create_image(0, 0, anchor="nw", image=self.image_bg)
+
+
+        self.regles_button = tk.Button(self.root, text="Règles", command=self.afficher_regles)
+        self.regles_button.pack(side=tk.LEFT, padx=5, pady=5)
+        # Boutons
+        self.begin_button = tk.Button(self.root, text="Commencer", command=self.on_begin)
+        self.begin_button.pack(side=tk.LEFT, padx=5, pady=5)
+
+        self.quit_button = tk.Button(self.root, text="Quitter", command=self.root.destroy)
+        self.quit_button.pack(side=tk.LEFT, padx=5, pady=5)
+
+        # Attributs de jeu
+        self.gestion_brique = None
+        self.plateforme = None
+        self.plat_id = None
+        self.score_systeme = None
+        self.score = 0
+        self.vies = 3
+        self.balle = None
+        self.controle = None
+        self._running = False
+    
+
+        # S'assurer que le canvas ait sa taille effective
+        self.root.update_idletasks()
+
+    def afficher_regles(self):
+        """Afficher les règles du jeu dans une boîte de dialogue"""
+        regles_texte = (
+            "Règles du jeu du casse-briques :\n\n"
+            "1. Déplacez la plateforme avec les flèches gauche et droite.\n"
+            "2. Faites rebondir la balle sur la plateforme pour casser les briques.\n"
+            "3. Chaque brique détruite rapporte 10 points.\n"
+            "4. Vous avez 3 vies. La balle qui tombe en bas du canvas fait perdre une vie.\n"
+            "5. Le jeu se termine quand toutes les briques sont détruites ou que vous perdez toutes vos vies."
+        )
+        messagebox.showinfo("Règles du jeu", regles_texte)
+    
+
+
+    def on_begin(self):
+        """Démarre (ou redémarre) une partie."""
+        # Supprimer l'image de démarrage
+        self.canvas.delete(self.bg_id)
+
+        self.begin_button.config(state="disabled")
+        # nettoyer l'aire de jeu si reprise
+        self.canvas.delete("all")
+
+        # (1) Création des briques
+        self.gestion_brique = CreationBrique(self.canvas)
+        self.gestion_brique.create_brique()
+
+        # (2) Création de la plateforme
+        self.plateforme = MouvementPlateforme(self.canvas)
+        self.plat_id = self.plateforme.plateforme()
+
+        # (3) Reset score / vies et affichage
+        # détruire l'ancien widget score s'il existe (pour éviter d'empiler)
+        if self.score_systeme is not None:
+            try:
+                self.score_systeme.frame.destroy()
+            except Exception:
+                pass
+        self.score_systeme = Score(self.root)
+        self.score_systeme.pack()
+        self.score = 0
+        self.vies = 3
+        self.score_systeme.modifier(score=self.score, vies=self.vies)
+
+        # (4) Réinitialiser / créer la balle
+        start_x = (240 + 360) / 2
+        start_y = 350
+        self.balle = CreationBalle(self.canvas, start_x, start_y, rayon=8, vitesse=6)
+
+        # (5) Préparer le contrôle clavier :
+        #    pour éviter d'empiler plusieurs bindings, on supprime les anciens bindings
+        for seq in ("<Left>", "<Right>", "<KeyRelease-Left>", "<KeyRelease-Right>"):
+            try:
+                self.root.unbind(seq)
+            except Exception:
+                pass
+        self.controle = DeplacementClavierplateforme(self.root, self.plateforme)
+
+        # (6) Lancer la boucle de jeu
+        self._running = True
+        # lancer la boucle de jeu immédiatement
+        self.game_loop()
+
+    def game_loop(self):
+        if not self._running:
+            return
+
+        # Protection si la balle n'existe pas
+        if not self.balle:
+            return
+
+        # Déplacement de la balle et récupération coordonnées
+        self.balle.move()
+        bx, by = self.balle.x, self.balle.y
+        r = self.balle.rayon
+
+        # Rebonds sur les murs
+        if bx - r <= 0:
+            self.balle.vx = abs(self.balle.vx)
+        if bx + r >= self.canvas_width:
+            self.balle.vx = -abs(self.balle.vx)
+        if by - r <= 0:
+            self.balle.vy = abs(self.balle.vy)
+
+        # Rebond sur la plateforme (si présente)
+        if self.plat_id is not None:
+            coords = self.canvas.coords(self.plat_id)
+            if len(coords) == 4:
+                px1, py1, px2, py2 = coords
+                # On considère rebond seulement si la balle descend (vy > 0)
+                if (py1 - r <= by <= py2) and (px1 <= bx <= px2) and self.balle.vy > 0:
+                    self.balle.vy = -abs(self.balle.vy)
+                    # effet d'angle
+                    centre_plat = (px1 + px2) / 2
+                    half_width = (px2 - px1) / 2 if (px2 - px1) != 0 else 1
+                    offset = (bx - centre_plat) / half_width
+                    self.balle.vx = self.balle.vitesse * offset
+
+        # Collision avec une brique
+        if self.gestion_brique and self.gestion_brique.destruction_briques(bx, by):
+            self.balle.vy = -self.balle.vy
+            self.score += 10
+            if self.score_systeme:
+                self.score_systeme.modifier(score=self.score)
+
+        # Si la balle tombe sous le canvas
+        if by - r > self.canvas_height:
+            self.vies -= 1
+            if self.score_systeme:
+                self.score_systeme.modifier(vies=self.vies)
+            if self.vies <= 0:
+                self.canvas.create_text(self.canvas_width/2, self.canvas_height/2,
+                                        text="GAME OVER", fill="white", font=("Arial", 28, "bold"))
+                self.begin_button.config(state="normal")
+                self._running = False
+                return
+            else:
+                self.reset_balle()
+
+        # Si toutes les briques sont détruites -> victoire
+        if self.gestion_brique and not self.gestion_brique.bricks:
+            self.canvas.create_text(self.canvas_width/2, self.canvas_height/2,
+                                    text="VICTOIRE !", fill="yellow", font=("Arial", 28, "bold"))
+            self.begin_button.config(state="normal")
+            self._running = False
+            return
+
+        # Prochain tick (~60 FPS)
+        self.root.after(16, self.game_loop)
+
+    def reset_balle(self):
+        start_x = (240 + 360) / 2
+        start_y = 350
+        if not self.balle:
+            # recréer la balle si nécessaire
+            self.balle = CreationBalle(self.canvas, start_x, start_y, rayon=8, vitesse=6)
+            return
+
+        self.balle.x = start_x
+        self.balle.y = start_y
+        self.balle.vx = random.choice([-4, 4])
+        self.balle.vy = -4
+        # mettre à jour coords graphiques si l'id existe
+        self.canvas.coords(
+        self.balle.id,
+        self.balle.x - self.balle.rayon, self.balle.y - self.balle.rayon,
+        self.balle.x + self.balle.rayon, self.balle.y + self.balle.rayon
+    )
+    
+
+    def run(self):
+        self.root.mainloop()
+if __name__ == "__main__":
+    jeu = JeuCasseBrique()
+    jeu.run()
