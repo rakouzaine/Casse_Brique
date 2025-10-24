@@ -29,16 +29,18 @@ class CreationBrique:
         h = 20       # hauteur d'une brique
         gap = 5      # espace entre deux briques
 
-        color = "red" # couleur unique pour toutes les briques
+        
 
         for j in range(rows):
             for i in range(n):
+
+                couleur = f'#{random.randrange(256**3):06x}'# couleur unique pour toutes les briques
                 x1 = x0 + i * (w + gap)
                 y1 = y0 + j * (h + gap)
                 x2 = x1 + w
                 y2 = y1 + h
 
-                brick_id = self.canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline="")
+                brick_id = self.canvas.create_rectangle(x1, y1, x2, y2, fill=couleur , outline="")
                 self.bricks.append({
                     "id": brick_id,
                     "x1": x1,
@@ -129,7 +131,7 @@ class MouvementPlateforme:
         self.speed = 10      # pixels par tick
         
     def plateforme(self):
-        self.plat = self.canvas.create_rectangle(240, 372, 360, 388, fill="#333")
+        self.plat = self.canvas.create_rectangle(240, 372, 360, 388, fill="white")
         return self.plat
 
     # méthodes non utilisées directement pour les bindings (contrôle via Deplacement_Clavier_plateforme)
@@ -202,7 +204,7 @@ class JeuCasseBrique:
         self.canvas = tk.Canvas(self.root, width=self.canvas_width, height=self.canvas_height, bg="black")
         self.canvas.pack(fill="both", expand=True ,pady=20)
         # Afficher l'image de démarrage
-        pil_image = Image.open(r"C:\Users\zairy\Downloads\images.jpg")
+        pil_image = Image.open("asset/image.png")
         pil_image = pil_image.resize((self.canvas_width, self.canvas_height))
         self.image_bg_orig = pil_image  # garder l'originale pour redimensionner
         self.image_bg = ImageTk.PhotoImage(self.image_bg_orig)
