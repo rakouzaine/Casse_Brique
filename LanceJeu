@@ -1,97 +1,141 @@
-def on_begin():
-    """Lance la partie du casse-brique."""
-    begin_button.config(state="disabled") #l’utilisateur ne peut plus cliquer dessus une fois la partie commencée.
-    #canvas.delete("all")
+def lancer_jeu(self):
+        """Démarre (ou redémarre) une partie."""
+        # Supprimer l'image de démarrage
+        self.canvas.delete(self.bg_id)
 
-    # Création des éléments du jeu
-    gestion_brique = Creation_Brique(canvas)
-    gestion_brique.create_brique()
+        self.bouton_commencer.config(state="disabled")
+        # nettoyer l'aire de jeu si reprise
+        self.canvas.delete("all")
 
-    plateforme = MouvementPlateforme(canvas)
-    plat_id = plateforme.plateforme()
+        # (1) Création des briques
+        self.gestion_brique = CreationBrique(self.canvas)
+        self.gestion_brique.creer_briques()
 
-    controle = Deplacement_Clavier_plateforme(root, plateforme)
+        # (2) Création de la plateforme
+        self.plateforme = MouvementPlateforme(self.canvas)
+        self.plat_id = self.plateforme.creer_plateforme()
 
-    score_systeme = Score(root)
-    score_systeme.pack()
-    score = 0
-    vies = 3
-    score_systeme.modifier(score=score, vies=vies)
+        # (3) Réinitialiser le score et les vies
+        # détruire l'ancien widget score s'il existe (pour éviter d'empiler)
+        if self.score_systeme is not None:
+            try:
+                self.score_systeme.frame.destroy()
+            except Exception:
+                pass
+        self.score_systeme = Score(self.root)
+        self.score_systeme.pack()
+        self.score = 0
+        self.vies = 3
+        self.score_systeme.modifier(score=self.score, vies=self.vies)
 
-    # Centre de départ de la balle (au-dessus de la plateforme)
-    start_x = (240 + 360) / 2
-    start_y = 350
+        # (4) Réinitialiser / créer la balle
+        start_x = (240 + 360) / 2
+        start_y = 350
+        self.balle = CreationBalle(self.canvas, start_x, start_y, rayon=8, vitesse=6)
 
-    balle = Creation_Balle(canvas, start_x, start_y, rayon=8, vitesse=6)
+        # (5) Préparer le contrôle clavier :
+        #    pour éviter d'empiler plusieurs bindings, on supprime les anciens bindings
+        for seq in ("<Left>", "<Right>", "<KeyRelease-Left>", "<KeyRelease-Right>"):
+            try:
+                self.root.unbind(seq)
+            except Exception:
+                pass
+        self.controle = DeplacementClavierplateforme(self.root, self.plateforme)
 
-    # Boucle de jeu
-    def game_loop():
-        nonlocal score, vies
+        # (6) Lancer la boucle de jeu
+        self._running = True
+        # lancer la boucle de jeu immédiatement
+        self.game_loop()
 
-        balle.move()
-        bx, by = balle.x, balle.y
-        r = balle.rayon
+    def game_loop(self):
+        if not self._running:
+            return
+
+        # Protection si la balle n'existe pas
+        if not self.balle:
+            return
+
+        # Déplacement de la balle et récupération coordonnées
+        self.balle.move()
+        bx, by = self.balle.x, self.balle.y
+        r = self.balle.rayon
 
         # Rebonds sur les murs
         if bx - r <= 0:
-            balle.vx = abs(balle.vx)
-        if bx + r >= canvas_width:
-            balle.vx = -abs(balle.vx)
+            self.balle.vx = abs(self.balle.vx)
+        if bx + r >= self.canvas_width:
+            self.balle.vx = -abs(self.balle.vx)
         if by - r <= 0:
-            balle.vy = abs(balle.vy)
+            self.balle.vy = abs(self.balle.vy)
 
-        # Rebond sur la plateforme (simple test par centre de la balle)
-        px1, py1, px2, py2 = canvas.coords(plat_id)
-        # On considère rebond seulement si la balle descend (vy > 0)
-        if  (py1 - r <= by <= py2) and (px1 <= bx <= px2):
-            balle.vy = -abs(balle.vy)
-            # effet d'angle
-            centre_plat = (px1 + px2) / 2
-            offset = (bx - centre_plat) / ((px2 - px1) / 2)
-            balle.vx = balle.vitesse * offset
+        # Rebond sur la plateforme (si présente)
+        if self.plat_id is not None:
+            coords = self.canvas.coords(self.plat_id)
+            if len(coords) == 4:
+                px1, py1, px2, py2 = coords
+                # On considère rebond seulement si la balle descend (vy > 0)
+                if (py1 - r <= by <= py2) and (px1 <= bx <= px2) and self.balle.vy > 0:
+                    self.balle.vy = -abs(self.balle.vy)
+                    # effet d'angle
+                    centre_plat = (px1 + px2) / 2
+                    half_width = (px2 - px1) / 2 if (px2 - px1) != 0 else 1
+                    offset = (bx - centre_plat) / half_width
+                    self.balle.vx = self.balle.vitesse * offset
 
-        # Collision avec une brique (on teste le centre)
-        if gestion_brique.brick_hit_at(bx, by):
-            balle.vy = -balle.vy
-            score += 10
-            score_systeme.modifier(score=score)
+        # Collision avec une brique
+        if self.gestion_brique and self.gestion_brique.supprimer_brique(bx, by):
+            self.balle.vy = -self.balle.vy
+            self.score += 10
+            if self.score_systeme:
+                self.score_systeme.modifier(score=self.score)
 
-        # Si la balle tombe
-        if by - r > canvas_height:
-            vies -= 1
-            score_systeme.modifier(vies=vies)
-            if vies <= 0:
-                canvas.create_text(canvas_width/2, canvas_height/2, text="GAME OVER",
-                                   fill="white", font=("Arial", 28, "bold"))
-                begin_button.config(state="normal")
+        # Si la balle tombe sous le canvas
+        if by - r > self.canvas_height:
+            self.vies -= 1
+            if self.score_systeme:
+                self.score_systeme.modifier(vies=self.vies)
+            if self.vies <= 0:
+                self.canvas.create_text(self.canvas_width/2, self.canvas_height/2,
+                                        text="GAME OVER", fill="white", font=("Arial", 28, "bold"))
+                self.bouton_commencer.config(state="normal")
+                self._running = False
                 return
             else:
-                # remettre la balle au-dessus de la plateforme
-                balle.x = start_x
-                balle.y = start_y
-                balle.vx = random.choice([-4, 4])
-                balle.vy = -4
-                # mettre à jour coords graphiques
-                canvas.coords(balle.id, balle.x-balle.rayon, balle.y-balle.rayon,
-                              balle.x+balle.rayon, balle.y+balle.rayon)
+                self.reinitialiser_balle()
 
-        # Si toutes les briques sont détruites
-        if not gestion_brique.bricks:
-            canvas.create_text(canvas_width/2, canvas_height/2, text="VICTOIRE !",
-                               fill="yellow", font=("Arial", 28, "bold"))
-            begin_button.config(state="normal")
+        # Si toutes les briques sont détruites -> victoire
+        if self.gestion_brique and not self.gestion_brique.briques:
+            self.canvas.create_text(self.canvas_width/2, self.canvas_height/2,
+                                    text="VICTOIRE !", fill="yellow", font=("Arial", 28, "bold"))
+            self.bouton_commencer.config(state="normal")
+            self._running = False
             return
 
         # Prochain tick (~60 FPS)
-        root.after(16, game_loop)
+        self.root.after(16, self.game_loop)
 
-    # Lancer la boucle principale du jeu
-    game_loop()
+    def reinitialiser_balle(self):
+        start_x = (240 + 360) / 2
+        start_y = 350
+        if not self.balle:
+            # recréer la balle si nécessaire
+            self.balle = CreationBalle(self.canvas, start_x, start_y, rayon=8, vitesse=6)
+            return
 
+        self.balle.x = start_x
+        self.balle.y = start_y
+        self.balle.vx = random.choice([-4, 4])
+        self.balle.vy = -4
+        # mettre à jour coords graphiques si l'id existe
+        self.canvas.coords(
+        self.balle.id,
+        self.balle.x - self.balle.rayon, self.balle.y - self.balle.rayon,
+        self.balle.x + self.balle.rayon, self.balle.y + self.balle.rayon
+    )
+    
 
-# Attacher la fonction au bouton (après sa définition)
-begin_button.config(command=on_begin)
-
-# Lancer la fenêtre
+    def executer(self):
+        self.root.mainloop()
 if __name__ == "__main__":
-    root.mainloop()
+    jeu = JeuCasseBrique()
+    jeu.executer()

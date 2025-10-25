@@ -1,16 +1,41 @@
 class Score:
+    FICHIER_SCORE = "meilleur_score.txt"  # fichier pour stocker le meilleur score
+
     def __init__(self, root):
         self.frame = Frame(root)
-        self.label_score = Label(self.frame, text="Score : 0")
+
+        # Labels pour les vies et le score actuel
         self.label_vies = Label(self.frame, text="Vies : 3")
         self.label_vies.pack(side=LEFT, padx=10)
+
+        self.label_score = Label(self.frame, text="Score : 0")
         self.label_score.pack(side=RIGHT, padx=10)
-        
-    def pack(self):
+
+        # Charger le meilleur score depuis le fichier
+        self.meilleur_score = 0
+        if os.path.exists(self.FICHIER_SCORE):
+            with open(self.FICHIER_SCORE, "r") as f:
+                contenu = f.read()
+                self.meilleur_score = int(contenu) if contenu.isdigit() else 0
+        else:
+            self.meilleur_score = 0
+
+        # Label pour le meilleur score
+        self.label_meilleur = Label(self.frame, text=f"Meilleur score : {self.meilleur_score}")
+        self.label_meilleur.pack(side=RIGHT, padx=10)
+
+    def pack(self): # Affiche le cadre du score à l’écran.
         self.frame.pack()
 
-    def modifier(self, score=None, vies=None):
+    def modifier(self, score=None, vies=None): #  Met à jour le score ou les vies, et sauvegarde le meilleur score si nécessaire.
         if score is not None:
             self.label_score.config(text=f"Score : {score}")
+            # mettre à jour le meilleur score si nécessaire
+            if score > self.meilleur_score:
+                self.meilleur_score = score
+                self.label_meilleur.config(text=f"Meilleur score : {self.meilleur_score}")
+                # sauvegarder le meilleur score dans le fichier
+                with open(self.FICHIER_SCORE, "w") as f:
+                    f.write(str(self.meilleur_score))
         if vies is not None:
             self.label_vies.config(text=f"Vies : {vies}")

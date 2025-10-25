@@ -2,6 +2,8 @@
 
 class JeuCasseBrique:
     def __init__(self):
+      
+
         self.root = tk.Tk()
         self.root.title("Jeu du casse-briques")
         self.root.configure(bg="bisque")
@@ -10,11 +12,20 @@ class JeuCasseBrique:
         self.canvas_height = 400
 
         self.canvas = tk.Canvas(self.root, width=self.canvas_width, height=self.canvas_height, bg="black")
-        self.canvas.pack(pady=20)
+        self.canvas.pack(fill="both", expand=True ,pady=20)
+        # Afficher l'image de démarrage
+        pil_image = Image.open("asset/image.png")
+        pil_image = pil_image.resize((self.canvas_width, self.canvas_height))
+        self.image_bg_orig = pil_image  # conserver l'image originale pour redimensionner
+        self.image_bg = ImageTk.PhotoImage(self.image_bg_orig)
+        self.bg_id = self.canvas.create_image(0, 0, anchor="nw", image=self.image_bg)
 
-        # Boutons
-        self.begin_button = tk.Button(self.root, text="Commencer", command=self.on_begin)
-        self.begin_button.pack(side=tk.LEFT, padx=5, pady=5)
+         # Boutons de commande
+        self.regles_button = tk.Button(self.root, text="Règles", command=self.afficher_regles)
+        self.regles_button.pack(side=tk.LEFT, padx=5, pady=5)
+
+        self.bouton_commencer = tk.Button(self.root, text="Commencer", command=self.lancer_jeu)
+        self.bouton_commencer.pack(side=tk.LEFT, padx=5, pady=5)
 
         self.quit_button = tk.Button(self.root, text="Quitter", command=self.root.destroy)
         self.quit_button.pack(side=tk.LEFT, padx=5, pady=5)
@@ -29,25 +40,43 @@ class JeuCasseBrique:
         self.balle = None
         self.controle = None
         self._running = False
+    
 
-        # S'assurer que le canvas ait sa taille effective
+        # Met à jour les dimensions effectives du canvas
         self.root.update_idletasks()
-#DDDDDDDDD
-    def on_begin(self):
+
+    def afficher_regles(self):
+        """Afficher les règles du jeu dans une boîte de dialogue"""
+        regles_texte = (
+            "Règles du jeu du casse-briques :\n\n"
+            "1. Déplacez la plateforme avec les flèches gauche et droite.\n"
+            "2. Faites rebondir la balle sur la plateforme pour casser les briques.\n"
+            "3. Chaque brique détruite rapporte 10 points.\n"
+            "4. Vous avez 3 vies. La balle qui tombe en bas du canvas fait perdre une vie.\n"
+            "5. Le jeu se termine quand toutes les briques sont détruites ou que vous perdez toutes vos vies."
+        )
+        messagebox.showinfo("Règles du jeu", regles_texte)
+    
+
+
+    def lancer_jeu(self):
         """Démarre (ou redémarre) une partie."""
-        self.begin_button.config(state="disabled")
+        # Supprimer l'image de démarrage
+        self.canvas.delete(self.bg_id)
+
+        self.bouton_commencer.config(state="disabled")
         # nettoyer l'aire de jeu si reprise
         self.canvas.delete("all")
 
         # (1) Création des briques
         self.gestion_brique = CreationBrique(self.canvas)
-        self.gestion_brique.create_brique()
+        self.gestion_brique.creer_briques()
 
         # (2) Création de la plateforme
         self.plateforme = MouvementPlateforme(self.canvas)
-        self.plat_id = self.plateforme.plateforme()
+        self.plat_id = self.plateforme.creer_plateforme()
 
-        # (3) Reset score / vies et affichage
+        # (3) Réinitialiser le score et les vies
         # détruire l'ancien widget score s'il existe (pour éviter d'empiler)
         if self.score_systeme is not None:
             try:
@@ -90,7 +119,7 @@ class JeuCasseBrique:
         # Déplacement de la balle et récupération coordonnées
         self.balle.move()
         bx, by = self.balle.x, self.balle.y
-        r = getattr(self.balle, "rayon", getattr(self.balle, "r", 8))
+        r = self.balle.rayon
 
         # Rebonds sur les murs
         if bx - r <= 0:
@@ -115,7 +144,7 @@ class JeuCasseBrique:
                     self.balle.vx = self.balle.vitesse * offset
 
         # Collision avec une brique
-        if self.gestion_brique and self.gestion_brique.brick_hit_at(bx, by):
+        if self.gestion_brique and self.gestion_brique.supprimer_brique(bx, by):
             self.balle.vy = -self.balle.vy
             self.score += 10
             if self.score_systeme:
@@ -129,24 +158,24 @@ class JeuCasseBrique:
             if self.vies <= 0:
                 self.canvas.create_text(self.canvas_width/2, self.canvas_height/2,
                                         text="GAME OVER", fill="white", font=("Arial", 28, "bold"))
-                self.begin_button.config(state="normal")
+                self.bouton_commencer.config(state="normal")
                 self._running = False
                 return
             else:
-                self.reset_balle()
+                self.reinitialiser_balle()
 
         # Si toutes les briques sont détruites -> victoire
-        if self.gestion_brique and not self.gestion_brique.bricks:
+        if self.gestion_brique and not self.gestion_brique.briques:
             self.canvas.create_text(self.canvas_width/2, self.canvas_height/2,
                                     text="VICTOIRE !", fill="yellow", font=("Arial", 28, "bold"))
-            self.begin_button.config(state="normal")
+            self.bouton_commencer.config(state="normal")
             self._running = False
             return
 
         # Prochain tick (~60 FPS)
         self.root.after(16, self.game_loop)
 
-    def reset_balle(self):
+    def reinitialiser_balle(self):
         start_x = (240 + 360) / 2
         start_y = 350
         if not self.balle:
@@ -159,13 +188,12 @@ class JeuCasseBrique:
         self.balle.vx = random.choice([-4, 4])
         self.balle.vy = -4
         # mettre à jour coords graphiques si l'id existe
-        if getattr(self.balle, "id", None):
-            self.canvas.coords(self.balle.id,
-                               self.balle.x - self.balle.rayon, self.balle.y - self.balle.rayon,
-                               self.balle.x + self.balle.rayon, self.balle.y + self.balle.rayon)
+        self.canvas.coords(
+        self.balle.id,
+        self.balle.x - self.balle.rayon, self.balle.y - self.balle.rayon,
+        self.balle.x + self.balle.rayon, self.balle.y + self.balle.rayon
+    )
+    
 
-    def run(self):
+    def executer(self):
         self.root.mainloop()
-if __name__ == "__main__":
-    jeu = JeuCasseBrique()
-    jeu.run()
