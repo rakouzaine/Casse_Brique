@@ -32,7 +32,7 @@ class JeuCasseBrique:
 
         # S'assurer que le canvas ait sa taille effective
         self.root.update_idletasks()
-
+#DDDDDDDDD
     def on_begin(self):
         """Démarre (ou redémarre) une partie."""
         self.begin_button.config(state="disabled")
