@@ -22,21 +22,21 @@ class CreationBrique:
     def creer_briques(self):
         """Crée et affiche les briques sur le canvas."""
         n = 10       # nombre de briques par ligne
-        rows = 5     # nombre de lignes
+        lignes = 5     # nombre de lignes
         x0 = 40      # x de départ
         y0 = 50      # y de départ
         w = 60       # largeur d'une brique
         h = 20       # hauteur d'une brique
-        gap = 5      # espace entre deux briques
+        espace = 5      # espace entre deux briques
 
         
 
-        for j in range(rows):
+        for j in range(lignes):
             for i in range(n):
 
                 couleur = f'#{random.randrange(256**3):06x}'# couleur unique pour toutes les briques
-                x1 = x0 + i * (w + gap)
-                y1 = y0 + j * (h + gap)
+                x1 = x0 + i * (w + espace)
+                y1 = y0 + j * (h + espace)
                 x2 = x1 + w
                 y2 = y1 + h
 
@@ -63,8 +63,8 @@ class CreationBrique:
 class Score:
     FICHIER_SCORE = "meilleur_score.txt"  # fichier pour stocker le meilleur score
 
-    def __init__(self, root):
-        self.frame = Frame(root)
+    def __init__(self, fichier):
+        self.frame = Frame(fichier)
 
         # Labels pour les vies et le score actuel
         self.label_vies = Label(self.frame, text="Vies : 3")
@@ -150,16 +150,16 @@ class MouvementPlateforme:
 
 
 class DeplacementClavierplateforme:
-    def __init__(self, root: tk.Tk, mp: MouvementPlateforme, fps: int = 60):
-        self.root = root
+    def __init__(self, fichier: tk.Tk, mp: MouvementPlateforme, fps: int = 60):
+        self.fichier = fichier
         self.mp = mp
         self.W = int(self.mp.canvas.cget("width"))
 
         #  Liaison clavier (flèches gauche/droite)
-        root.bind("<Left>",  self._left)
-        root.bind("<Right>", self._right)
-        root.bind("<KeyRelease-Left>",  self._stop)
-        root.bind("<KeyRelease-Right>", self._stop)
+        fichier.bind("<Left>",  self._left)
+        fichier.bind("<Right>", self._right)
+        fichier.bind("<KeyRelease-Left>",  self._stop)
+        fichier.bind("<KeyRelease-Right>", self._stop)
 
         # Boucle d'actualisation
         self.periode_ms = max(1, int(1000 / fps))
@@ -198,33 +198,31 @@ class DeplacementClavierplateforme:
 # ------------------------- PROGRAMME PRINCIPAL ---------------------------
 
 class JeuCasseBrique:
+
     def __init__(self):
       
-
-        self.root = tk.Tk()
-        self.root.title("Jeu du casse-briques")
-        self.root.configure(bg="bisque")
-
+        self.fichier = tk.Tk()
+        self.fichier.title("Jeu du casse-briques")
+        self.fichier.configure(bg="bisque")
         self.canvas_width = 720
         self.canvas_height = 400
-
-        self.canvas = tk.Canvas(self.root, width=self.canvas_width, height=self.canvas_height, bg="black")
+        self.canvas = tk.Canvas(self.fichier, width=self.canvas_width, height=self.canvas_height, bg="black")
         self.canvas.pack(fill="both", expand=True ,pady=20)
+
         # Afficher l'image de démarrage
         pil_image = Image.open("asset/image.png")
         pil_image = pil_image.resize((self.canvas_width, self.canvas_height))
-        self.image_bg_orig = pil_image  # conserver l'image originale pour redimensionner
-        self.image_bg = ImageTk.PhotoImage(self.image_bg_orig)
+        self.image_bg = ImageTk.PhotoImage(pil_image)
         self.bg_id = self.canvas.create_image(0, 0, anchor="nw", image=self.image_bg)
 
          # Boutons de commande
-        self.regles_button = tk.Button(self.root, text="Règles", command=self.afficher_regles)
+        self.regles_button = tk.Button(self.fichier, text="Règles", command=self.afficher_regles)
         self.regles_button.pack(side=tk.LEFT, padx=5, pady=5)
 
-        self.bouton_commencer = tk.Button(self.root, text="Commencer", command=self.lancer_jeu)
+        self.bouton_commencer = tk.Button(self.fichier, text="Commencer", command=self.lancer_jeu)
         self.bouton_commencer.pack(side=tk.LEFT, padx=5, pady=5)
 
-        self.quit_button = tk.Button(self.root, text="Quitter", command=self.root.destroy)
+        self.quit_button = tk.Button(self.fichier, text="Quitter", command=self.fichier.destroy)
         self.quit_button.pack(side=tk.LEFT, padx=5, pady=5)
 
         # Attributs de jeu
@@ -238,9 +236,6 @@ class JeuCasseBrique:
         self.controle = None
         self._running = False
     
-
-        # Met à jour les dimensions effectives du canvas
-        self.root.update_idletasks()
 
     def afficher_regles(self):
         """Afficher les règles du jeu dans une boîte de dialogue"""
@@ -280,7 +275,7 @@ class JeuCasseBrique:
                 self.score_systeme.frame.destroy()
             except Exception:
                 pass
-        self.score_systeme = Score(self.root)
+        self.score_systeme = Score(self.fichier)
         self.score_systeme.pack()
         self.score = 0
         self.vies = 3
@@ -292,20 +287,15 @@ class JeuCasseBrique:
         self.balle = CreationBalle(self.canvas, start_x, start_y, rayon=8, vitesse=6)
 
         # (5) Préparer le contrôle clavier :
-        #    pour éviter d'empiler plusieurs bindings, on supprime les anciens bindings
-        for seq in ("<Left>", "<Right>", "<KeyRelease-Left>", "<KeyRelease-Right>"):
-            try:
-                self.root.unbind(seq)
-            except Exception:
-                pass
-        self.controle = DeplacementClavierplateforme(self.root, self.plateforme)
+        self.controle = DeplacementClavierplateforme(self.fichier, self.plateforme)
 
         # (6) Lancer la boucle de jeu
         self._running = True
-        # lancer la boucle de jeu immédiatement
-        self.game_loop()
 
-    def game_loop(self):
+        # lancer la boucle de jeu immédiatement
+        self.Boucle_Jeu()
+
+    def Boucle_Jeu(self):
         if not self._running:
             return
 
@@ -336,9 +326,9 @@ class JeuCasseBrique:
                     self.balle.vy = -abs(self.balle.vy)
                     # effet d'angle
                     centre_plat = (px1 + px2) / 2
-                    half_width = (px2 - px1) / 2 if (px2 - px1) != 0 else 1
-                    offset = (bx - centre_plat) / half_width
-                    self.balle.vx = self.balle.vitesse * offset
+                    demie_largeur = (px2 - px1) / 2 if (px2 - px1) != 0 else 1
+                    decalage = (bx - centre_plat) / demie_largeur
+                    self.balle.vx = self.balle.vitesse * decalage
 
         # Collision avec une brique
         if self.gestion_brique and self.gestion_brique.supprimer_brique(bx, by):
@@ -370,9 +360,10 @@ class JeuCasseBrique:
             return
 
         # Prochain tick (~60 FPS)
-        self.root.after(16, self.game_loop)
+        self.fichier.after(16, self.Boucle_Jeu)
 
     def reinitialiser_balle(self):
+        # Fonction qui permet de recréer la balle quand le joeur perds une vie
         start_x = (240 + 360) / 2
         start_y = 350
         if not self.balle:
@@ -393,8 +384,9 @@ class JeuCasseBrique:
     
 
     def executer(self):
-        self.root.mainloop()
-# Lancer la fenêtre
+        self.fichier.mainloop()
+
+# Lancer la fenêtre du jeu
 if __name__ == "__main__":
     jeu = JeuCasseBrique()
     jeu.executer()

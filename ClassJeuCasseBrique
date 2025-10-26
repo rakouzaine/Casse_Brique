@@ -1,201 +1,4 @@
-""" 
-qui : Rayan Souni , Yassine ZAIR
-quand : 09 / 10 / 2025 
-quoi : Jeu du casse-briques sur PYTHON via TKinter
-"""
 
-import tkinter as tk
-import math,os
-import random
-from tkinter import Canvas, Frame, Label, LEFT, RIGHT,messagebox
-from PIL import Image, ImageTk
-
-
-# -------------------------- CLASSES -------------------------------------
-
-class CreationBrique:
-    def __init__(self, canvas: Canvas):
-        """Initialise le gestionnaire de briques."""
-        self.canvas = canvas
-        self.briques = []  # Liste qui stocke les briques (id + coordonnées)
-
-    def creer_briques(self):
-        """Crée et affiche les briques sur le canvas."""
-        n = 10       # nombre de briques par ligne
-        rows = 5     # nombre de lignes
-        x0 = 40      # x de départ
-        y0 = 50      # y de départ
-        w = 60       # largeur d'une brique
-        h = 20       # hauteur d'une brique
-        gap = 5      # espace entre deux briques
-
-        
-
-        for j in range(rows):
-            for i in range(n):
-
-                couleur = f'#{random.randrange(256**3):06x}'# couleur unique pour toutes les briques
-                x1 = x0 + i * (w + gap)
-                y1 = y0 + j * (h + gap)
-                x2 = x1 + w
-                y2 = y1 + h
-
-                brique_id = self.canvas.create_rectangle(x1, y1, x2, y2, fill=couleur , outline="")
-                self.briques.append({
-                    "id": brique_id,
-                    "x1": x1,
-                    "y1": y1,
-                    "x2": x2,
-                    "y2": y2
-                })
-
-    def supprimer_brique(self, x, y):
-        """Supprime une brique si le point (x, y) entre en collision avec elle."""
-        for brique in list(self.briques):  # itérer sur une copie car on peut supprimer
-            if brique["x1"] <= x <= brique["x2"] and brique["y1"] <= y <= brique["y2"]:
-                self.canvas.delete(brique["id"])
-                self.briques.remove(brique)
-                return True
-        return False
-
-
-
-class Score:
-    FICHIER_SCORE = "meilleur_score.txt"  # fichier pour stocker le meilleur score
-
-    def __init__(self, root):
-        self.frame = Frame(root)
-
-        # Labels pour les vies et le score actuel
-        self.label_vies = Label(self.frame, text="Vies : 3")
-        self.label_vies.pack(side=LEFT, padx=10)
-
-        self.label_score = Label(self.frame, text="Score : 0")
-        self.label_score.pack(side=RIGHT, padx=10)
-
-        # Charger le meilleur score depuis le fichier
-        self.meilleur_score = 0
-        if os.path.exists(self.FICHIER_SCORE):
-            with open(self.FICHIER_SCORE, "r") as f:
-                contenu = f.read()
-                self.meilleur_score = int(contenu) if contenu.isdigit() else 0
-        else:
-            self.meilleur_score = 0
-
-        # Label pour le meilleur score
-        self.label_meilleur = Label(self.frame, text=f"Meilleur score : {self.meilleur_score}")
-        self.label_meilleur.pack(side=RIGHT, padx=10)
-
-    def pack(self): # Affiche le cadre du score à l’écran.
-        self.frame.pack()
-
-    def modifier(self, score=None, vies=None): #  Met à jour le score ou les vies, et sauvegarde le meilleur score si nécessaire.
-        if score is not None:
-            self.label_score.config(text=f"Score : {score}")
-            # mettre à jour le meilleur score si nécessaire
-            if score > self.meilleur_score:
-                self.meilleur_score = score
-                self.label_meilleur.config(text=f"Meilleur score : {self.meilleur_score}")
-                # sauvegarder le meilleur score dans le fichier
-                with open(self.FICHIER_SCORE, "w") as f:
-                    f.write(str(self.meilleur_score))
-        if vies is not None:
-            self.label_vies.config(text=f"Vies : {vies}")
-            
-class CreationBalle:
-    def __init__(self, canvas, x, y, rayon=8, vitesse=6):
-        self.canvas = canvas
-        self.x = x
-        self.y = y
-        self.rayon = rayon
-        self.vitesse = vitesse
-
-        # direction initiale vers le haut (valeur vy négative)
-        angle = random.uniform(-math.pi/4, math.pi/4)
-        self.vx = vitesse * math.sin(angle)
-        self.vy = -abs(vitesse * math.cos(angle))
-
-        # Dessiner la balle
-        self.id = canvas.create_oval(x-rayon, y-rayon, x+rayon, y+rayon, fill="red")
-
-    def move(self):
-        self.x += self.vx
-        self.y += self.vy
-        self.canvas.coords(self.id, self.x-self.rayon, self.y-self.rayon, self.x+self.rayon, self.y+self.rayon)
-
-
-class MouvementPlateforme:
-    def __init__(self, canvas: tk.Canvas):
-        self.canvas = canvas
-        self.vx = 0          # vitesse horizontale
-        self.speed = 10      # déplacement en pixels par actualisation
-        
-    def creer_plateforme(self):
-        """Crée la plateforme sur la toile."""
-        self.plat = self.canvas.create_rectangle(240, 372, 360, 388, fill="white")
-        return self.plat
-
-    # méthodes non utilisées directement pour les bindings (contrôle via Deplacement_Clavier_plateforme)
-    def _left(self):
-        """Déplace la plateforme vers la gauche."""
-        self.vx = -self.speed
-
-    def _right(self):
-        """Déplace la plateforme vers la droite."""
-        self.vx = self.speed
-
-    def _stop(self):
-        """Arrête le mouvement horizontal."""
-        self.vx = 0
-
-
-class DeplacementClavierplateforme:
-    def __init__(self, root: tk.Tk, mp: MouvementPlateforme, fps: int = 60):
-        self.root = root
-        self.mp = mp
-        self.W = int(self.mp.canvas.cget("width"))
-
-        #  Liaison clavier (flèches gauche/droite)
-        root.bind("<Left>",  self._left)
-        root.bind("<Right>", self._right)
-        root.bind("<KeyRelease-Left>",  self._stop)
-        root.bind("<KeyRelease-Right>", self._stop)
-
-        # Boucle d'actualisation
-        self.periode_ms = max(1, int(1000 / fps))
-        self._tick()
-
-    def _left(self, _evt):
-        """Déplacement de la plateforme vers la gauche."""
-        self.mp.vx = -self.mp.speed
-
-    def _right(self, _evt):
-        """Déplacement de la plateforme vers la droite."""
-        self.mp.vx = self.mp.speed
-
-    def _stop(self, _evt):
-        """Arrête le déplacement horizontal."""
-        self.mp.vx = 0
-
-    def _tick(self):
-        """Met à jour la position de la plateforme à chaque tick."""
-        if self.mp.vx != 0:
-            x1, y1, x2, y2 = self.mp.canvas.coords(self.mp.plat)
-            dx = self.mp.vx
-
-            # arrêt aux bords
-            if x1 + dx < 0:
-                dx = -x1
-            elif x2 + dx > self.W:
-                dx = self.W - x2
-
-            if dx != 0:
-                self.mp.canvas.move(self.mp.plat, dx, 0)  # déplacement uniquement sur X
-
-        self.mp.canvas.after(self.periode_ms, self._tick)
-
-
-# ------------------------- PROGRAMME PRINCIPAL ---------------------------
 
 class JeuCasseBrique:
     def __init__(self):
@@ -303,9 +106,9 @@ class JeuCasseBrique:
         # (6) Lancer la boucle de jeu
         self._running = True
         # lancer la boucle de jeu immédiatement
-        self.game_loop()
+        self.Boucle_Jeu()
 
-    def game_loop(self):
+    def Boucle_Jeu(self):
         if not self._running:
             return
 
@@ -370,7 +173,7 @@ class JeuCasseBrique:
             return
 
         # Prochain tick (~60 FPS)
-        self.root.after(16, self.game_loop)
+        self.root.after(16, self.Boucle_Jeu)
 
     def reinitialiser_balle(self):
         start_x = (240 + 360) / 2
@@ -394,7 +197,3 @@ class JeuCasseBrique:
 
     def executer(self):
         self.root.mainloop()
-# Lancer la fenêtre
-if __name__ == "__main__":
-    jeu = JeuCasseBrique()
-    jeu.executer()
